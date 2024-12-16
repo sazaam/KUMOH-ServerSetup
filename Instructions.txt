@@ -1,0 +1,449 @@
+
+SETUP of our private VPS (Link w/ Domain name DNS)
+to host our projects, any kind, and basically unlimited (but mostly Web)
+
+
+
+
+
+Prerequisites :
+
+- VPS Plan + Server Ready (with Ubuntu LTS 20+ Environment installed)
+- + Ur IP 46.202.163.72
+- (Potentially) Domain Name bought in registrar
+
+- Basic knowledge of Bash commands [ + Git Bash for windows (Windows users) ]
+
+- Basic understanding of Security Systems (Users, Authentication) & Network (Traffic)
+
+Network Protocols in use today :
+	SSH
+	SFTP
+	HTTP
+	HTTPS
+
+
+
+
+Lets start !
+
+
+	MOST IMPORTANT FIRST STEP
+
+	Remove VPS Default Behaviors
+	-> Create your custom (Groups + Users)
+	
+	
+	Enable SSH Remote Access (Log in via Private/Public keypairs)
+	Then Remove 'User + Password' Login as a Authentication Method
+	
+	
+	UNDERSTAND the Default Conf:
+	  	Root + Password Authentication
+	  	Username + Password Authentication
+		Groups (Root belongs to group Admin and Sudo)
+		No other users (Only Root)
+		Remove Root easy Access (Root + Passwd should not log in)
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	So First :
+	
+	
+	Update Your System
+	sudo apt update 
+	sudo apt upgrade 
+	sudo apt dist-upgrade (Ubuntu)
+	
+	
+	Users : 
+		Root (Hidden) : Root
+		
+		UserMe() : Logingroup admin sudo sftp
+		UserFriend() : LoginGroup admin sudo sftp
+		UserEditor() : LoginGroup - -  sftp
+		
+		
+	
+	Create a Non-Root User
+	sudo adduser {username} 
+	sudo usermod -aG sudo {username} // -> Action Rights (Commands)
+	sudo usermod -aG admin {username} // -> File Permissions
+	
+	
+	enabling SSH Authentication
+	https://www.digitalocean.com/community/tutorials/ssh-essentials-working-with-ssh-servers-clients-and-keys
+	
+	
+	if not installed yet 
+	sudo apt install openssh-server -y
+	
+	
+	locally:
+		On ur local machine Create SSH keypair
+			ssh-keygen -b 4096 (better than 2048)
+		
+		this key will be stored in :
+		~/.ssh/ folder
+		
+		"~/" in bash = your windows current user directory ("C:/Users/{me}")
+	
+	
+	
+	locally:
+		
+		nano ~/.ssh/config
+			
+			Host (IP)
+			    HostName (Alias)
+				User {MyUser}
+			    Port port_num //(22 by default) -> change it
+	
+	
+	remote:
+		1. allow your user(s)  By allowing some predefined Groups for your server admin
+		2. remove Root Login & Password Auth (= Access & Visibility)
+		
+		
+		
+		in the file "/etc/ssh/sshd_config"
+		sudo nano /etc/ssh/sshd_config
+	
+			AllowGroups {myallowedGroup myotherGroup ...}  // Custom-made group is better, it will ONLY allow the goups listed there
+			
+			// AllowUsers {User1 User2 ...} also work
+			
+			#Port 22 // Comment that line
+			Port {new SSH Port} 
+				// changing the port is considered best practice 
+			
+			MaxAuthTries 5 // This ensures max tries = counters bruteforcing auth
+			MaxSessions 3 // Also counters bruteforcing auth < 10 Sessions
+			
+			
+			PubkeyAuthentication yes
+			AuthorizedKeysFile .ssh/authorized_keys 
+				// Here we are, our SSH keys location, could be changed as well
+			
+			
+			
+			!!!
+			Beware while testing these setups, thesehave to be thoroughly tested, (and if possible always with one of the superuser-able users session)
+			!!!
+			
+			
+			--> When you tested all you can finally disable root user login
+			
+			PasswordAuthentication no
+			PermitEmptyPasswords no
+			
+			
+			
+			#PermitRootLogin yes // comment that line
+			PermitRootLogin no
+				// root not allowed to login 
+			
+	
+	* For any of these changes to take place we have to restart SSH (remote):
+		sudo service ssh restart
+	
+	
+	
+	* remember your VPS retailer Platforms own Firewall (should reflect Ports allowance)
+	
+	
+		
+	Create (or plan) Distinct Group(s) that represent different Rights and Permissions (Ex Editors, Uploaders, Administrators) 
+	
+	
+	About Users and Groups
+	
+		Creating a Group :
+			sudo addgroup {groupname}
+		
+		Creating a User (and setting its Password) :
+			sudo useradd {username}
+			sudo passwd {username}
+		
+		Adding User to Group :
+			sudo usermod -aG {groupname} {username}
+		
+		Removing User from Group :
+			sudo gpasswd -d {username} {groupname}  (-d means delete the user entry in Group)
+			#!!!!!!!!
+				sudo deluser {username} {groupname}  (very dangerous DONT FORGET LAST PARAMETER if not deletes user)
+			#!!!!!!!!
+		
+		
+	Verify your changes were done :
+		
+		List All Groups :
+			getent group
+		Verify Particular Group :
+			getent group sftp
+		Verify User Exists
+	
+	
+	
+	
+	
+	Now Permissions :
+		
+		
+		sudo usermod -aG {username} sudo
+			is the correct way to have superuser Privileges (Actions as Root)
+		
+		sudo usermod -aG {username} admin
+			is the correct way to have Permissions (File / Folder Permissions like for superuser Root) 
+	
+	
+	
+	Owning Rights and Modifying Permissions :
+	
+	Complicated somehow, but absolutely necessary, the knowledge of 
+	'chown' and 'chmod' command :
+		Three Visitors :
+			Owner 
+			Group
+			Others
+		Three Actions :
+			Read (r)
+			Write (w)
+			Execute (x)
+			
+	
+			
+	debug / see ownership + permissions :
+		ls -l command :
+			Show information about a file
+				ls -l {file}
+				ls -l {pathtofile}
+			Get information about a directory ONLY
+				ls -ld {dir}
+				ls -ld {pathtodir}
+				(concat shorthand arguments) "ls -ld {dir}" same as "ls -l -d {dir}"		
+		
+	result examples
+		"drwxr-xr-x" (dir)
+		"–rw-r–-r–-" (file)
+		
+		here first info character is 'd' or '-' stands for file type
+		the rest is list of 3 permissions in the User>Group>Others succession.
+		
+		
+		ex :
+			'd' is dir
+			'rwx' all 3 permissions granted for Owner
+			'r-x' only read or execute for Groups
+			'r-x' only read or execute for Others
+		
+		ex :
+			'-' is file
+			'rw-' only read and write for Owner
+			'r--' only read for Groups
+			'r--' only read for Others
+		
+		
+		
+		chown command (sets the owner or group of a file or folder):
+		
+		
+			
+		
+		
+		
+	https://www.cyberciti.biz/faq/how-to-use-chmod-and-chown-command/
+	
+	
+	
+	
+	
+	
+	what is secure Auth ?
+	
+	by Passwd ? --> Not ideal 
+		Attackers will try 2 Bruteforce :
+			Bruteforce :
+				Send Multiple different generated Passwords in Login Requests PER SECOND
+			-> Default User (Def Pssw)
+			-> Username is known ? --> also can bruteforce
+			WHEN PASSWORD LOGIN is enabled
+	SSH (Private / Public keypair system)
+	
+	What is insecure ?
+	
+		- Root Access Remotely accessible (Log in as Root)
+		- Password access only is permitted (No SSH)
+		- Port of Traffic Protocol is Known
+		- Firewall is off (accepts all kinds of Protocols on Default Ports)
+		- Any access is using Default Settings 
+	
+	
+	
+		
+	Establish Keys (private in your local machine) Public nis know from Remote machine
+	so that : Handshake can be established 
+	Means that if you change machine, re-do that process (Key Pair generation)
+	
+	Ensure you can log in with your User + SSH
+	Disable Simple Root/Passwd auth meth
+
+	
+		
+	(at least on SSH)
+	
+	
+	
+	Setup FTP (SFTP) 
+	
+	sudo nano /etc/ssh/sshd_config
+	
+	
+	
+	Setup Internet HTTP+S Protocols as well
+	
+	Setup Nginx + SSL Certificates for HTTP & HTTP Protocols
+	(redirecting to HTTP -> HTTPS safe implementation)
+	
+	https://www.digitalocean.com/community/tutorials/how-to-secure-nginx-with-let-s-encrypt-on-ubuntu-20-04
+	
+	
+	
+	
+	
+	remote:
+	 
+	-> Nginx (installed by default on Ubuntu 16+)
+	
+	
+	enable Nginx (a little later, after settings are done)
+	
+	
+	
+	sudo nano /etc/nginx/sites-available/{myexampledomain.com}
+	
+	
+	
+		server {
+
+	       server_name {myexampledomain.com} www.{myexampledomain.com};
+
+	       root /var/www/{myexampledomain.com}/{...}/html;
+	       index index.html;
+
+	       location / {
+	               try_files $uri $uri/ =404;
+	       }
+		   
+		}
+	
+	
+	
+	Enable the Settings for this site
+	
+	now you should make a symlink of that file in the other (real) folder parsed by Nginx (sites-enabled)
+	so that if you have :
+	/etc/nginx/sites-available/
+		{myexampledomain.com} // nginx setup file
+		
+	/etc/nginx/sites-enabled/
+		{symlink to ../sites-available/myexampledomain.com} 
+		
+	symlinks are achieved on linux with the command 
+		ln -s source_file symbolic_link
+		
+		so in our case:
+	(from within /etc/nginx/sites-enabled/ folder)
+	ln -s ../sites-available/{myexampledomain.com} ./{myexampledomain.com}
+		
+	now if you type 'ls' from within that folder, it should display your symbolic Link
+	
+	
+	
+	
+	
+	
+		
+	verify nginx settings make sense
+		sudo nginx -t
+		
+		--> if correct then restart (or start) Nginx
+		
+		sudo systemctl restart nginx
+
+
+	
+	
+	
+	Allow Nginx through remote Firewall :
+	
+	sudo ufw allow 'Nginx Full'
+    sudo ufw delete allow 'Nginx HTTP' (delete redundant One, since Full means both HTTP and HTTPS)
+	
+	Checking :
+	sudo ufw status
+
+	Output should be :
+		Status: active
+
+		To                         Action      From
+		--                         ------      ----
+		OpenSSH                    ALLOW       Anywhere
+		Nginx Full                 ALLOW       Anywhere
+		OpenSSH (v6)               ALLOW       Anywhere (v6)
+		Nginx Full (v6)            ALLOW       Anywhere (v6)
+	
+	
+	IMPORTANT
+	
+	Check VPS Provider Firewall (Once again it might need to be allowing Ports 80 HTTP and 443 HTTPS)
+	
+	END IMPORTANT
+	
+	
+	CertBot for very easy SSL certification-enabled setup
+	
+	
+	CertBot handles your certificate generation and implementation process to enable secure and redirect unsafe HTTP traffic to HTTPS-only traffic
+	
+	install:
+		sudo apt install -y certbot python3-certbot-nginx
+	
+		
+	
+	
+		sudo certbot --nginx -d {myexampledomain.com} -d {myexampledomain.com} 
+		
+			// this should match the same as in your Nginx Setup file /etc/nginx/sites-available/{myexampledomain.com}
+		
+	-> will make you choose these two options
+	
+		1: No redirect - Make no further changes to the webserver configuration.
+		2: Redirect - Make all requests redirect to secure HTTPS access. Choose this for
+		new sites, or if you are confident your site works on HTTPS. You can undo this
+		change by editing your web server configuration.
+	
+	Choosing option 2 is the preferred one if no necessary other needs.
+	
+	
+	
+	Certbot has a timer setup to renew certificates automatically,
+	we can check it settings as such :
+	 
+	sudo systemctl status certbot.timer
+	
+	and also check the whole renewal process (force it again) like so : 
+	
+	sudo certbot renew --dry-run
+	
+	
+	-- displays message saying Done... 
+	
+
+
